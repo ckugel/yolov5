@@ -65,10 +65,9 @@ def _create(name, pretrained=True, channels=3, classes=80, autoshape=True, verbo
         s = f'{e}. Cache may be out of date, try `force_reload=True` or see {help_url} for help.'
         raise Exception(s) from e
 
-
 def custom(path='path/to/model.pt', autoshape=True, _verbose=True, device=None):
     # YOLOv5 custom or local model
-    return _create(path, autoshape=autoshape, verbose=_verbose, device=device)
+    return _create(path, autoshape=autoshape, verbose=_verbose, device=device, classes=2)
 
 
 def yolov5n(pretrained=True, channels=3, classes=80, autoshape=True, _verbose=True, device=None):
