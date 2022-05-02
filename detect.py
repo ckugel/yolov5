@@ -34,8 +34,10 @@ import cv2
 
 import threading
 
-from networktables import NetworkTable
-from networktables import NetworkTables
+import numpy
+
+"""from networktables import NetworkTable
+from networktables import NetworkTables"""
 
 import torch
 import torch.backends.cudnn as cudnn
@@ -53,8 +55,19 @@ from utils.general import (LOGGER, check_file, check_img_size, check_imshow, che
 from utils.plots import Annotator, colors, save_one_box
 from utils.torch_utils import select_device, time_sync
 
-table: NetworkTable = None
+# table: NetworkTable
 
+entryMap: list[str] = [
+    "blue balls",
+    "red balls"
+]
+
+# constants and other stuff for rotations
+deviceCUDA: torch.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+mountingAngle: float = -20
+rotationVector: numpy.ndarray = numpy.numpy([mountingAngle, 0, 0])
+rotation: torch.Tensor = torch.tensor(rotationVector, device=deviceCUDA)
 
 @torch.no_grad()
 def run(
@@ -117,6 +130,8 @@ def run(
     model.warmup(imgsz=(1 if pt else bs, 3, *imgsz))  # warmup
     dt, seen = [0.0, 0.0, 0.0], 0
     for path, im, im0s, vid_cap, s in dataset:
+        balls: list[list[torch.Tensor]] = [[], []]
+
         t1 = time_sync()
         im = torch.from_numpy(im).to(device)
         im = im.half() if model.fp16 else im.float()  # uint8 to fp16/32
@@ -166,13 +181,9 @@ def run(
 
                 # Write results
                 for *xyxy, conf, cls in reversed(det):
-                    if save_txt:  # Write to file
-                        xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
-                        if table is not None:
-                            NetworkTable(table).putNumberArray('balls', xywh)
-                        line = (cls, *xywh, conf) if save_conf else (cls, *xywh)  # label format
-                        with open(txt_path + '.txt', 'a') as f:
-                            f.write(('%g ' * len(line)).rstrip() % line + '\n')
+                    if conf >= conf_thres:
+
+                        balls[int(cls.item())].append(xyxy)
 
                     if save_img or save_crop or view_img:  # Add bbox to image
                         c = int(cls)  # integer class
@@ -181,8 +192,20 @@ def run(
                         if save_crop:
                             save_one_box(xyxy, imc, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)
 
-        # Print time (inference-only)
-        LOGGER.info(f'{s}Done. ({t3 - t2:.3f}s)')
+        if len(balls[0]) != 0 or len(balls[1]) != 0:
+            for i in balls[0]:
+                print(entryMap[0] + ": " + str(i))
+            for j in balls[1]:
+                print(entryMap[1] + ": " + str(j))
+            print("\n\n")
+
+        """
+        if table is not None:
+            for i in balls[0]:
+                table.putNumberArray(entryMap[0], balls[0][i])
+            for i in balls[1]:
+                table.putNumberArray(entryMap[1], balls[1][i])
+        """
 
     # Print results
     t = tuple(x / seen * 1E3 for x in dt)  # speeds per image
@@ -228,19 +251,19 @@ def parse_opt():
     return opt
 
 
-def networkTableConnect():
+"""def networkTableConnect():
     global table
     NetworkTables.initialize(server="10.31.30.2")
     # connect to table until it shows up
     while table is not None:
-        table = NetworkTables.getTable("Jetson nano")
+        table = NetworkTables.getTable("Jetson nano")"""
 
 
 def main(opt):
     check_requirements(exclude=('tensorboard', 'thop'))
-    thread: threading = threading.Thread(target=networkTableConnect)
-    thread.name = "NetworkTablesThread"
-    thread.start()
+    # thread: threading = threading.Thread(target=networkTableConnect)
+    # thread.name = "NetworkTablesThread"
+    # thread.start()
     run(**vars(opt))
 
 
