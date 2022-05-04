@@ -25,6 +25,7 @@ Usage - formats:
 """
 
 import argparse
+import math
 import os
 import sys
 from pathlib import Path
@@ -60,8 +61,7 @@ entryMap: list[str] = [
 ]
 
 tables = NetworkTablesInstance()
-tables.initialize(server="0.0.0.0")
-# NetworkTables.initialize(server="10.31.30.2")
+NetworkTables.initialize(server="10.31.30.2")
 
 while not tables.isConnected():
     pass
@@ -69,6 +69,12 @@ while not tables.isConnected():
 blue_table = NetworkTables.getTable("Jetson nano").getSubTable("blue balls")
 red_table = NetworkTables.getTable("Jetson nano").getSubTable("red balls")
 
+
+def transform(coord: float, size: float) -> float:
+    # 62.2 is FOV, and 0.00304 meters is the focal length
+    coord -= (size / 2)
+    scalar: float = (size / 2) / (2 * math.tan(math.radians(31.1)))
+    return coord / scalar
 
 @torch.no_grad()
 def run(
@@ -184,8 +190,8 @@ def run(
                 for *xyxy, conf, cls in reversed(det):
                     if conf >= conf_thres:
                         coords: list[float] = torch.tensor(xyxy).tolist()
-                        balls[int(cls.item())][0].append((coords[2] + coords[0]) / 2)
-                        balls[int(cls.item())][1].append((coords[3] + coords[1]) / 2)
+                        balls[int(cls.item())][0].append(transform((coords[2] + coords[0]) / 2))
+                        balls[int(cls.item())][1].append(transform((coords[3] + coords[1]) / 2))
 
                     if save_img or save_crop or view_img:  # Add bbox to image
                         c = int(cls)  # integer class
