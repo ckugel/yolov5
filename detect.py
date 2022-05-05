@@ -69,11 +69,11 @@ while not tables.isConnected():
 blue_table = NetworkTables.getTable("Jetson nano").getSubTable("blue balls")
 red_table = NetworkTables.getTable("Jetson nano").getSubTable("red balls")
 
+scalarX, scalarY = float
 
-def transform(coord: float, size: float) -> float:
-    # 62.2 is FOV, and 0.00304 meters is the focal length
+
+def transform(coord: float, size: float, scalar: float) -> float:
     coord -= (size / 2)
-    scalar: float = size / (2 * math.tan(math.radians(31.1)))
     return coord / scalar
 
 
@@ -82,8 +82,8 @@ def run(
         weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
         source=ROOT / 'data/images',  # file/dir/URL/glob, 0 for webcam
         data=ROOT / 'data/coco128.yaml',  # dataset.yaml path
-        imgsz=(640, 640),  # inference size (height, width)
-        conf_thres=0.25,  # confidence threshold
+        imgsz=(416, 416),  # inference size (height, width)
+        conf_thres=0.75,  # confidence threshold
         iou_thres=0.45,  # NMS IOU threshold
         max_det=100,  # maximum detections per image
         device='',  # cuda device, i.e. 0 or 0,1,2,3 or cpu
@@ -133,6 +133,10 @@ def run(
         dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt)
         bs = 1  # batch_size
     vid_path, vid_writer = [None] * bs, [None] * bs
+
+    # 62.2 is FOV, and 0.00304 meters is the focal length
+    scalarX = dataset.width / (2 * math.tan(math.radians(31.1)))
+    scalarY = dataset.height / (2 * math.tan(math.radians(31.1)))
 
     # Run inference
     model.warmup(imgsz=(1 if pt else bs, 3, *imgsz))  # warmup
@@ -191,8 +195,8 @@ def run(
                 for *xyxy, conf, cls in reversed(det):
                     if conf >= conf_thres:
                         coords: list[float] = torch.tensor(xyxy).tolist()
-                        balls[int(cls.item())][0].append(transform((coords[2] + coords[0]) / 2, dataset.width))
-                        balls[int(cls.item())][1].append(transform((coords[3] + coords[1]) / 2, dataset.height))
+                        balls[int(cls.item())][0].append(transform((coords[2] + coords[0]) / 2, dataset.width, scalarX))
+                        balls[int(cls.item())][1].append(transform((coords[3] + coords[1]) / 2, dataset.height, scalarY))
 
                     if save_img or save_crop or view_img:  # Add bbox to image
                         c = int(cls)  # integer class
