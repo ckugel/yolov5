@@ -74,7 +74,7 @@ scalarX, scalarY = float
 
 def transform(coord: float, size: float, scalar: float) -> float:
     coord -= (size / 2)
-    return coord / scalar
+    return -coord / scalar
 
 
 @torch.no_grad()
@@ -136,7 +136,7 @@ def run(
 
     # 62.2 is FOV, and 0.00304 meters is the focal length
     scalarX = dataset.width / (2 * math.tan(math.radians(31.1)))
-    scalarY = dataset.height / (2 * math.tan(math.radians(31.1)))
+    scalarY = dataset.height / (2 * math.tan(math.radians(24.4)))
 
     # Run inference
     model.warmup(imgsz=(1 if pt else bs, 3, *imgsz))  # warmup
