@@ -73,8 +73,9 @@ red_table = NetworkTables.getTable("Jetson nano").getSubTable("red balls")
 def transform(coord: float, size: float) -> float:
     # 62.2 is FOV, and 0.00304 meters is the focal length
     coord -= (size / 2)
-    scalar: float = (size / 2) / (2 * math.tan(math.radians(31.1)))
+    scalar: float = size / (2 * math.tan(math.radians(31.1)))
     return coord / scalar
+
 
 @torch.no_grad()
 def run(
@@ -84,7 +85,7 @@ def run(
         imgsz=(640, 640),  # inference size (height, width)
         conf_thres=0.25,  # confidence threshold
         iou_thres=0.45,  # NMS IOU threshold
-        max_det=1000,  # maximum detections per image
+        max_det=100,  # maximum detections per image
         device='',  # cuda device, i.e. 0 or 0,1,2,3 or cpu
         view_img=False,  # show results
         save_txt=False,  # save results to *.txt
@@ -190,8 +191,8 @@ def run(
                 for *xyxy, conf, cls in reversed(det):
                     if conf >= conf_thres:
                         coords: list[float] = torch.tensor(xyxy).tolist()
-                        balls[int(cls.item())][0].append(transform((coords[2] + coords[0]) / 2))
-                        balls[int(cls.item())][1].append(transform((coords[3] + coords[1]) / 2))
+                        balls[int(cls.item())][0].append(transform((coords[2] + coords[0]) / 2, dataset.width))
+                        balls[int(cls.item())][1].append(transform((coords[3] + coords[1]) / 2, dataset.height))
 
                     if save_img or save_crop or view_img:  # Add bbox to image
                         c = int(cls)  # integer class
@@ -204,7 +205,6 @@ def run(
         blue_table.putNumberArray(key="y", value=balls[0][1])
         red_table.putNumberArray(key="x", value=balls[1][0])
         red_table.putNumberArray(key="y", value=balls[1][1])
-
 
     # Print results
     t = tuple(x / seen * 1E3 for x in dt)  # speeds per image
