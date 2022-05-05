@@ -327,7 +327,7 @@ class LoadStreams:
                 import pafy
                 s = pafy.new(s).getbest(preftype="mp4").url  # YouTube URL
             if s.isnumeric():
-                cap = cv2.VideoCapture(0)
+                cap = cv2.VideoCapture(GSTREAMER_PIPELINE, cv2.CAP_GSTREAMER)
             else:
                 cap = cv2.VideoCapture(s)
             assert cap.isOpened(), f'{st}Failed to open {s}'
